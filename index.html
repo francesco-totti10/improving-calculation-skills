@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百問計算 記録アプリ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #3B82F6;
+  --primary-dark: #1D4ED8;
+  --secondary: #F97316;
+  --success: #22C55E;
+  --danger: #EF4444;
+  --warning: #EAB308;
+  --bg: #F0F4FF;
+  --card: #FFFFFF;
+  --text: #1E293B;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+  --shadow: 0 4px 24px rgba(59,130,246,0.10);
+  --radius: 16px;
+  --radius-sm: 8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.hidden{display:none!important;}
+
+/* ===== ローディング ===== */
+#loading-overlay{position:fixed;inset:0;background:rgba(240,244,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;}
+.spinner{width:56px;height:56px;border:6px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading-overlay p{margin-top:16px;color:var(--text-muted);font-size:1rem;}
+
+/* ===== ログイン ===== */
+#login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#3B82F6 0%,#6366F1 50%,#8B5CF6 100%);}
+.login-card{background:#fff;border-radius:24px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.18);}
+.login-logo{text-align:center;margin-bottom:32px;}
+.login-logo .icon{font-size:3.5rem;display:block;}
+.login-logo h1{font-size:1.6rem;font-weight:900;color:var(--primary);margin-top:8px;}
+.login-logo p{font-size:.85rem;color:var(--text-muted);margin-top:4px;}
+.form-group{margin-bottom:20px;}
+.form-group label{display:block;font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:8px;}
+.form-group input{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:1rem;font-family:inherit;transition:.2s;outline:none;}
+.form-group input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.15);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border:none;border-radius:var(--radius-sm);font-size:1rem;font-weight:700;font-family:inherit;cursor:pointer;transition:.2s;text-decoration:none;}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;width:100%;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(59,130,246,.35);}
+.btn-secondary{background:var(--border);color:var(--text);}
+.btn-secondary:hover{background:#CBD5E1;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{background:#DC2626;}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{background:#16A34A;}
+.btn-warning{background:var(--warning);color:#fff;}
+.btn-warning:hover{background:#CA8A04;}
+.btn-sm{padding:8px 14px;font-size:.82rem;}
+.alert{padding:12px 16px;border-radius:var(--radius-sm);font-size:.9rem;font-weight:500;margin-top:12px;}
+.alert-error{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;}
+.alert-success{background:#F0FDF4;color:#166534;border:1px solid #BBF7D0;}
+.alert-info{background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE;}
+
+/* ===== メインレイアウト ===== */
+#app{display:none;flex-direction:column;min-height:100vh;}
+header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px;box-shadow:0 4px 16px rgba(59,130,246,.3);}
+header h1{font-size:1.2rem;font-weight:900;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.user-badge{background:rgba(255,255,255,.2);padding:6px 14px;border-radius:20px;font-size:.85rem;font-weight:700;}
+.btn-logout{background:rgba(255,255,255,.15);color:#fff;padding:8px 16px;border:1px solid rgba(255,255,255,.4);font-size:.85rem;}
+.btn-logout:hover{background:rgba(255,255,255,.25);}
+main{flex:1;padding:28px 24px;max-width:1100px;margin:0 auto;width:100%;}
+
+/* ===== セクションタイトル ===== */
+.section-title{font-size:1.5rem;font-weight:900;color:var(--text);margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.section-title .icon{font-size:1.6rem;}
+
+/* ===== カード ===== */
+.card{background:var(--card);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:24px;}
+.card-title{font-size:1.1rem;font-weight:700;margin-bottom:20px;color:var(--text);}
+
+/* ===== 記録入力フォーム ===== */
+.record-form{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:600px){.record-form{grid-template-columns:1fr;}}
+.form-row-full{grid-column:1/-1;}
+.time-input-row{display:flex;align-items:center;gap:12px;}
+.time-input-row input{width:80px;text-align:center;}
+.time-label{font-weight:700;color:var(--text-muted);}
+select{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:1rem;font-family:inherit;background:#fff;outline:none;cursor:pointer;transition:.2s;}
+select:focus{border-color:var(--primary);}
+.score-preview{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #93C5FD;border-radius:var(--radius-sm);padding:16px;text-align:center;}
+.score-preview .big-num{font-size:3rem;font-weight:900;color:var(--primary);line-height:1;}
+.score-preview p{font-size:.85rem;color:var(--text-muted);margin-top:4px;}
+.submit-area{text-align:center;margin-top:8px;}
+.btn-record{background:linear-gradient(135deg,var(--secondary),#EA580C);color:#fff;font-size:1.2rem;padding:18px 48px;border-radius:40px;box-shadow:0 6px 20px rgba(249,115,22,.35);}
+.btn-record:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(249,115,22,.45);}
+
+/* ===== グラフ ===== */
+.chart-wrap{position:relative;width:100%;height:320px;}
+.chart-filter{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.filter-label{font-weight:700;font-size:.9rem;color:var(--text-muted);}
+
+/* ===== 教師タブ ===== */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:24px;}
+.tab-btn{padding:12px 20px;background:none;border:none;border-bottom:3px solid transparent;font-size:.95rem;font-weight:700;color:var(--text-muted);cursor:pointer;font-family:inherit;transition:.2s;margin-bottom:-2px;}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+.tab-btn:hover{color:var(--primary);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ===== テーブル ===== */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.9rem;}
+th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);}
+td{padding:11px 14px;border-bottom:1px solid var(--border);}
+tr:hover td{background:#F8FAFF;}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:700;}
+.badge-teacher{background:#FEF3C7;color:#92400E;}
+.badge-student{background:#DBEAFE;color:#1E40AF;}
+
+/* ===== パスワード管理 ===== */
+.pass-display{display:inline-flex;align-items:center;gap:8px;}
+.pass-text{font-family:monospace;font-size:.9rem;letter-spacing:.05em;}
+.btn-eye{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:2px 6px;}
+input.pass-input{padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:.9rem;width:140px;font-family:inherit;}
+input.pass-input:focus{border-color:var(--primary);outline:none;}
+
+/* ===== 名簿フォーム ===== */
+.roster-form{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;}
+.roster-form .form-group{margin-bottom:0;flex:1;min-width:120px;}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap;}
+.upload-area{border:2px dashed #93C5FD;border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:.2s;background:#EFF6FF;}
+.upload-area:hover{background:#DBEAFE;border-color:var(--primary);}
+.upload-area p{color:var(--text-muted);font-size:.9rem;margin-top:8px;}
+
+/* ===== 時間フォーマット表示 ===== */
+.time-formatted{font-size:.85rem;color:var(--text-muted);}
+
+/* ===== トースト通知 ===== */
+#toast{position:fixed;bottom:28px;right:28px;padding:14px 20px;border-radius:var(--radius-sm);font-size:.9rem;font-weight:700;color:#fff;z-index:9000;transform:translateY(80px);opacity:0;transition:.3s;max-width:340px;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.success{background:var(--success);}
+#toast.error{background:var(--danger);}
+#toast.info{background:var(--primary);}
+
+/* ===== 記録一覧 ===== */
+.records-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.record-card{background:linear-gradient(135deg,#F8FAFF,#EFF6FF);border:1px solid #BFDBFE;border-radius:12px;padding:16px;transition:.2s;}
+.record-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(59,130,246,.12);}
+.record-card .rec-date{font-size:.8rem;color:var(--text-muted);font-weight:700;}
+.record-card .rec-subject{font-size.9rem;font-weight:700;color:var(--primary);margin:4px 0;}
+.record-card .rec-score{font-size:1.8rem;font-weight:900;color:var(--text);}
+.record-card .rec-score span{font-size:.9rem;color:var(--text-muted);}
+.record-card .rec-time{font-size:.85rem;color:var(--text-muted);}
+.subject-tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.78rem;font-weight:700;margin-bottom:6px;}
+.tag-add{background:#DCFCE7;color:#166534;}
+.tag-sub{background:#FEE2E2;color:#991B1B;}
+.tag-mul{background:#FEF3C7;color:#92400E;}
+
+/* ===== モーダル ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:center;justify-content:center;}
+.modal{background:#fff;border-radius:var(--radius);padding:32px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal h3{font-size:1.2rem;font-weight:900;margin-bottom:20px;}
+.modal-footer{display:flex;gap:12px;justify-content:flex-end;margin-top:24px;}
+
+/* ===== レスポンシブ ===== */
+@media(max-width:768px){
+  main{padding:16px;}
+  .card{padding:20px;}
+  header h1{font-size:1rem;}
+  .section-title{font-size:1.2rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p>読み込み中...</p>
+</div>
+
+<!-- ログインページ -->
+<div id="login-page" class="hidden">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="icon">🧮</span>
+      <h1>百問計算</h1>
+      <p>記録・グラフ化アプリ</p>
+    </div>
+    <!-- 通常ログイン -->
+    <div id="login-form-area">
+      <div class="form-group">
+        <label for="login-id">ログインID</label>
+        <input type="text" id="login-id" placeholder="例: student01" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="login-pass">パスワード</label>
+        <input type="password" id="login-pass" placeholder="パスワードを入力" autocomplete="current-password">
+      </div>
+      <div id="login-alert"></div>
+      <button class="btn btn-primary" id="btn-login" onclick="doLogin()" style="margin-top:8px;">
+        🔑 ログイン
+      </button>
+    </div>
+    <!-- 初回パスワード設定 -->
+    <div id="setup-form-area" class="hidden">
+      <div class="alert alert-info" id="setup-info-msg"></div>
+      <div class="form-group" style="margin-top:16px;">
+        <label for="new-pass">新しいパスワード</label>
+        <input type="password" id="new-pass" placeholder="パスワードを決めてください" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="confirm-pass">パスワード（確認）</label>
+        <input type="password" id="confirm-pass" placeholder="もう一度入力してください" autocomplete="new-password">
+      </div>
+      <div id="setup-alert"></div>
+      <button class="btn btn-primary" onclick="doSetupPassword()" style="margin-top:8px;">
+        ✅ パスワードを設定する
+      </button>
+      <button class="btn btn-secondary" onclick="cancelSetup()" style="margin-top:10px;width:100%;">
+        ← 戻る
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- メインアプリ -->
+<div id="app">
+  <header>
+    <h1>🧮 百問計算 記録アプリ</h1>
+    <div class="header-right">
+      <span class="user-badge" id="user-badge">---</span>
+      <button class="btn btn-logout" onclick="doLogout()">ログアウト</button>
+    </div>
+  </header>
+  <main>
+    <!-- ===== 児童用ページ ===== -->
+    <div id="student-page" class="hidden">
+      <div class="section-title"><span class="icon">📝</span>記録を入力する</div>
+      <div class="card">
+        <div class="record-form">
+          <div class="form-group">
+            <label for="rec-date">📅 日付</label>
+            <input type="date" id="rec-date">
+          </div>
+          <div class="form-group">
+            <label for="rec-subject">📚 種目</label>
+            <select id="rec-subject">
+              <option value="たし算">たし算</option>
+              <option value="ひき算">ひき算</option>
+              <option value="かけ算">かけ算</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="rec-print">📄 プリント番号</label>
+            <select id="rec-print">
+              <option value="1">1番</option><option value="2">2番</option>
+              <option value="3">3番</option><option value="4">4番</option>
+              <option value="5">5番</option><option value="6">6番</option>
+              <option value="7">7番</option><option value="8">8番</option>
+              <option value="9">9番</option><option value="10">10番</option>
+              <option value="11">11番</option><option value="12">12番</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="rec-wrong">❌ まちがえた問題数</label>
+            <input type="number" id="rec-wrong" min="0" max="100" value="0" placeholder="0〜100">
+          </div>
+          <div class="form-group form-row-full">
+            <label>⏱ タイム</label>
+            <div class="time-input-row">
+              <input type="number" id="rec-min" min="0" max="59" value="0" placeholder="0">
+              <span class="time-label">分</span>
+              <input type="number" id="rec-sec" min="0" max="59" value="0" placeholder="0">
+              <span class="time-label">秒</span>
+            </div>
+          </div>
+          <div class="score-preview form-row-full">
+            <p>正答数プレビュー</p>
+            <div class="big-num" id="score-preview-num">100</div>
+            <p>問 せいかい！</p>
+          </div>
+        </div>
+        <div class="submit-area" style="margin-top:20px;">
+          <button class="btn btn-record" id="btn-save-record" onclick="saveRecord()">
+            💾 記録する
+          </button>
+        </div>
+      </div>
+
+      <div class="section-title"><span class="icon">📊</span>グラフで見る</div>
+      <div class="card">
+        <div class="chart-filter">
+          <span class="filter-label">種目：</span>
+          <select id="chart-subject" onchange="renderChart()" style="width:auto;padding:8px 14px;">
+            <option value="すべて">すべて</option>
+            <option value="たし算">たし算</option>
+            <option value="ひき算">ひき算</option>
+            <option value="かけ算">かけ算</option>
+          </select>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="myChart"></canvas>
+        </div>
+        <div style="text-align:center;margin-top:10px;" id="no-chart-msg" class="hidden">
+          <p style="color:var(--text-muted);">まだ記録がありません。記録を入力するとグラフが表示されます。</p>
+        </div>
+      </div>
+
+      <div class="section-title"><span class="icon">📋</span>記録一覧</div>
+      <div class="card">
+        <div id="records-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== 教師用ページ ===== -->
+    <div id="teacher-page" class="hidden">
+      <div class="section-title"><span class="icon">👩‍🏫</span>教師管理ページ</div>
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-roster" onclick="switchTab('roster')">👥 名簿管理</button>
+        <button class="tab-btn" id="tab-password" onclick="switchTab('password')">🔐 パスワード管理</button>
+        <button class="tab-btn" id="tab-view" onclick="switchTab('view')">👁 児童ページ閲覧</button>
+      </div>
+
+      <!-- 名簿管理 -->
+      <div class="tab-content active" id="tab-content-roster">
+        <div class="card">
+          <div class="card-title">📥 Excelで一括登録</div>
+          <label class="upload-area" for="excel-upload">
+            <div style="font-size:2rem;">📂</div>
+            <strong>Excelファイルをクリックして選択</strong>
+            <p>A列: 出席番号、B列: 氏名 のフォーマット</p>
+          </label>
+          <input type="file" id="excel-upload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(event)">
+          <div id="excel-preview" class="hidden" style="margin-top:16px;">
+            <div class="alert alert-info" id="excel-preview-msg"></div>
+            <div class="btn-group" style="margin-top:12px;">
+              <button class="btn btn-success" onclick="confirmExcelUpload()">✅ この内容で登録する</button>
+              <button class="btn btn-secondary" onclick="cancelExcelUpload()">キャンセル</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">➕ 個別登録・編集</div>
+          <div class="roster-form">
+            <div class="form-group">
+              <label>出席番号</label>
+              <input type="number" id="new-seat" min="1" max="50" placeholder="例: 1">
+            </div>
+            <div class="form-group">
+              <label>氏名</label>
+              <input type="text" id="new-name" placeholder="例: 山田 太郎">
+            </div>
+            <div class="form-group">
+              <label>ログインID（省略可）</label>
+              <input type="text" id="new-loginid" placeholder="自動生成">
+            </div>
+            <button class="btn btn-primary" onclick="addStudent()" style="align-self:flex-end;">追加・更新</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">👥 児童名簿</div>
+            <button class="btn btn-danger btn-sm" onclick="deleteAllStudents()">🗑 全員削除</button>
+          </div>
+          <div class="table-wrap">
+            <table id="roster-table">
+              <thead><tr><th>出席番号</th><th>氏名</th><th>ログインID</th><th>操作</th></tr></thead>
+              <tbody id="roster-tbody"></tbody>
+            </table>
+          </div>
+          <div id="roster-empty" class="hidden" style="text-align:center;padding:24px;color:var(--text-muted);">名簿が登録されていません。</div>
+        </div>
+      </div>
+
+      <!-- パスワード管理 -->
+      <div class="tab-content" id="tab-content-password">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+            <div class="card-title" style="margin-bottom:0;">🔐 パスワード一覧</div>
+            <div class="btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="toggleAllPasswords()">👁 全表示切替</button>
+              <button class="btn btn-danger btn-sm" onclick="resetAllPasswords()">🔄 全員リセット</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>出席番号</th><th>氏名</th><th>ログインID</th><th>パスワード</th><th>操作</th></tr></thead>
+              <tbody id="password-tbody"></tbody>
+            </table>
+          </div>
+          <div id="pass-empty" class="hidden" style="text-align:center;padding:24px;color:var(--text-muted);">名簿が登録されていません。</div>
+        </div>
+      </div>
+
+      <!-- 児童ページ閲覧 -->
+      <div class="tab-content" id="tab-content-view">
+        <div class="card">
+          <div class="card-title">👁 児童を選んで記録を確認</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <select id="view-student-select" style="flex:1;min-width:200px;">
+              <option value="">-- 児童を選んでください --</option>
+            </select>
+            <button class="btn btn-primary" onclick="viewStudentPage()">表示</button>
+          </div>
+        </div>
+        <!-- 閲覧用: 児童グラフ -->
+        <div id="view-student-content" class="hidden">
+          <div class="card">
+            <div class="card-title" id="view-student-name"></div>
+            <div class="chart-filter">
+              <span class="filter-label">種目：</span>
+              <select id="view-chart-subject" onchange="renderViewChart()" style="width:auto;padding:8px 14px;">
+                <option value="すべて">すべて</option>
+                <option value="たし算">たし算</option>
+                <option value="ひき算">ひき算</option>
+                <option value="かけ算">かけ算</option>
+              </select>
+            </div>
+            <div class="chart-wrap"><canvas id="viewChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">記録一覧</div>
+            <div id="view-records-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- トースト -->
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// グローバル変数
+// ============================================================
+let currentUser = null;
+let myRecordsCache = [];
+let classStatsCache = {};
+let myChart = null;
+let viewChart = null;
+let excelPendingData = [];
+let showAllPasswords = false;
+let passwordsCache = [];
+
+// ============================================================
+// 初期化
+// ============================================================
+window.onload = function() {
+  const savedUser = sessionStorage.getItem('currentUser');
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    hideLoading();
+    showApp();
+  } else {
+    hideLoading();
+    showLoginPage();
+  }
+};
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+function showLoading(msg) {
+  const el = document.getElementById('loading-overlay');
+  el.querySelector('p').textContent = msg || '読み込み中...';
+  el.classList.remove('hidden');
+}
+
+// ============================================================
+// ログイン
+// ============================================================
+function showLoginPage() {
+  document.getElementById('login-page').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  // 今日の日付をデフォルト設定
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+}
+
+function doLogin() {
+  const loginId = document.getElementById('login-id').value.trim();
+  const password = document.getElementById('login-pass').value.trim();
+  if (!loginId) { showAlert('login-alert', 'ログインIDを入力してください。', 'error'); return; }
+  if (!password) { showAlert('login-alert', 'パスワードを入力してください。', 'error'); return; }
+
+  document.getElementById('btn-login').textContent = '確認中...';
+  document.getElementById('btn-login').disabled = true;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      document.getElementById('btn-login').textContent = '🔑 ログイン';
+      document.getElementById('btn-login').disabled = false;
+      if (res.success) {
+        currentUser = res.user;
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        showApp();
+      } else if (res.needsPasswordSetup) {
+        currentUser = res.user;
+        showSetupForm(res.message);
+      } else {
+        showAlert('login-alert', res.message, 'error');
+      }
+    })
+    .withFailureHandler(err => {
+      document.getElementById('btn-login').textContent = '🔑 ログイン';
+      document.getElementById('btn-login').disabled = false;
+      showAlert('login-alert', 'エラーが発生しました: ' + err.message, 'error');
+    })
+    .login(loginId, password);
+}
+
+function showSetupForm(msg) {
+  document.getElementById('login-form-area').classList.add('hidden');
+  document.getElementById('setup-form-area').classList.remove('hidden');
+  document.getElementById('setup-info-msg').textContent = msg;
+}
+
+function cancelSetup() {
+  document.getElementById('setup-form-area').classList.add('hidden');
+  document.getElementById('login-form-area').classList.remove('hidden');
+  document.getElementById('setup-alert').innerHTML = '';
+  currentUser = null;
+}
+
+function doSetupPassword() {
+  const newPass = document.getElementById('new-pass').value.trim();
+  const confirmPass = document.getElementById('confirm-pass').value.trim();
+  if (!newPass || newPass.length < 4) {
+    showAlert('setup-alert', 'パスワードは4文字以上で入力してください。', 'error');
+    return;
+  }
+  if (newPass !== confirmPass) {
+    showAlert('setup-alert', 'パスワードが一致しません。', 'error');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) {
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        showApp();
+      } else {
+        showAlert('setup-alert', res.message, 'error');
+      }
+    })
+    .withFailureHandler(err => showAlert('setup-alert', err.message, 'error'))
+    .registerPassword(currentUser.loginId, newPass);
+}
+
+function doLogout() {
+  sessionStorage.removeItem('currentUser');
+  currentUser = null;
+  myRecordsCache = [];
+  classStatsCache = {};
+  location.reload();
+}
+
+// ============================================================
+// アプリ表示
+// ============================================================
+function showApp() {
+  document.getElementById('login-page').classList.add('hidden');
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').style.flexDirection = 'column';
+  document.getElementById('user-badge').textContent =
+    (currentUser.role === '教師' ? '👩‍🏫 ' : '🧒 ') + currentUser.name + ' さん';
+
+  if (currentUser.role === '教師') {
+    document.getElementById('teacher-page').classList.remove('hidden');
+    document.getElementById('student-page').classList.add('hidden');
+    loadTeacherPage();
+  } else {
+    document.getElementById('student-page').classList.remove('hidden');
+    document.getElementById('teacher-page').classList.add('hidden');
+    initStudentPage();
+  }
+}
+
+// ============================================================
+// 児童ページ
+// ============================================================
+function initStudentPage() {
+  // 今日の日付をデフォルト設定
+  const today = new Date();
+  const localDate = today.toLocaleDateString('sv-SE');
+  document.getElementById('rec-date').value = localDate;
+
+  // まちがえた数 → 正答数プレビュー
+  document.getElementById('rec-wrong').addEventListener('input', updateScorePreview);
+  updateScorePreview();
+
+  loadMyRecords();
+}
+
+function updateScorePreview() {
+  const wrong = parseInt(document.getElementById('rec-wrong').value, 10) || 0;
+  const score = Math.max(0, Math.min(100, 100 - wrong));
+  document.getElementById('score-preview-num').textContent = score;
+}
+
+function saveRecord() {
+  const dateVal = document.getElementById('rec-date').value;
+  const subject = document.getElementById('rec-subject').value;
+  const printNo = document.getElementById('rec-print').value;
+  const wrongCount = parseInt(document.getElementById('rec-wrong').value, 10) || 0;
+  const minutes = parseInt(document.getElementById('rec-min').value, 10) || 0;
+  const seconds = parseInt(document.getElementById('rec-sec').value, 10) || 0;
+
+  if (!dateVal) { showToast('日付を選択してください', 'error'); return; }
+  if (wrongCount < 0 || wrongCount > 100) { showToast('まちがえた数は0〜100で入力してください', 'error'); return; }
+  if (minutes === 0 && seconds === 0) { showToast('タイムを入力してください', 'error'); return; }
+
+  document.getElementById('btn-save-record').textContent = '保存中...';
+  document.getElementById('btn-save-record').disabled = true;
+
+  const data = {
+    seatNo: currentUser.seatNo,
+    subject, printNo, wrongCount, minutes, seconds
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      document.getElementById('btn-save-record').textContent = '💾 記録する';
+      document.getElementById('btn-save-record').disabled = false;
+      if (res.success) {
+        showToast(res.message, 'success');
+        document.getElementById('rec-wrong').value = 0;
+        document.getElementById('rec-min').value = 0;
+        document.getElementById('rec-sec').value = 0;
+        updateScorePreview();
+        loadMyRecords();
+      } else {
+        showToast(res.message, 'error');
+      }
+    })
+    .withFailureHandler(err => {
+      document.getElementById('btn-save-record').textContent = '💾 記録する';
+      document.getElementById('btn-save-record').disabled = false;
+      showToast('エラー: ' + err.message, 'error');
+    })
+    .saveRecord(data);
+}
+
+function loadMyRecords() {
+  showLoading('記録を読み込み中...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.success) {
+        myRecordsCache = res.records;
+        loadClassStats();
+      }
+    })
+    .withFailureHandler(() => hideLoading())
+    .getMyRecords(currentUser.seatNo);
+}
+
+function loadClassStats() {
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) classStatsCache = res.stats;
+      renderChart();
+      renderRecordsList(myRecordsCache, 'records-list');
+    })
+    .withFailureHandler(() => {
+      renderChart();
+      renderRecordsList(myRecordsCache, 'records-list');
+    })
+    .getClassStats();
+}
+
+function renderChart() {
+  const filterSubject = document.getElementById('chart-subject').value;
+  renderChartCommon('myChart', myRecordsCache, filterSubject, true);
+}
+
+function renderChartCommon(canvasId, records, filterSubject, showClassStats) {
+  let filtered = records;
+  if (filterSubject !== 'すべて') {
+    filtered = records.filter(r => r.subject === filterSubject);
+  }
+
+  const noMsgId = canvasId === 'myChart' ? 'no-chart-msg' : null;
+
+  if (filtered.length === 0) {
+    if (noMsgId) document.getElementById(noMsgId).classList.remove('hidden');
+    if (canvasId === 'myChart' && myChart) { myChart.destroy(); myChart = null; }
+    if (canvasId === 'viewChart' && viewChart) { viewChart.destroy(); viewChart = null; }
+    return;
+  }
+  if (noMsgId) document.getElementById(noMsgId).classList.add('hidden');
+
+  const labels = filtered.map(r => r.date);
+  const scores = filtered.map(r => r.score);
+  const times = filtered.map(r => r.time);
+  const avgTimes = filtered.map(r => {
+    const key = r.date + '__' + r.subject;
+    return classStatsCache[key] ? classStatsCache[key].avg : null;
+  });
+  const bestTimes = filtered.map(r => {
+    const key = r.date + '__' + r.subject;
+    return classStatsCache[key] ? classStatsCache[key].best : null;
+  });
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const prevChart = canvasId === 'myChart' ? myChart : viewChart;
+  if (prevChart) prevChart.destroy();
+
+  const datasets = [
+    {
+      label: '正答数', data: scores, type: 'bar',
+      backgroundColor: 'rgba(59,130,246,0.25)', borderColor: '#3B82F6',
+      borderWidth: 2, yAxisID: 'yScore', order: 2
+    },
+    {
+      label: 'タイム（秒）', data: times, type: 'line',
+      borderColor: '#F97316', backgroundColor: 'rgba(249,115,22,0.1)',
+      borderWidth: 2.5, tension: 0.3, fill: false,
+      pointRadius: 4, pointBackgroundColor: '#F97316', yAxisID: 'yTime', order: 1
+    }
+  ];
+
+  if (showClassStats) {
+    datasets.push({
+      label: 'クラス平均タイム', data: avgTimes, type: 'line',
+      borderColor: '#8B5CF6', borderWidth: 2, borderDash: [6,4],
+      fill: false, tension: 0.3, pointRadius: 3,
+      pointBackgroundColor: '#8B5CF6', yAxisID: 'yTime', order: 1
+    });
+    datasets.push({
+      label: 'クラス最速タイム', data: bestTimes, type: 'line',
+      borderColor: '#22C55E', borderWidth: 2, borderDash: [4,4],
+      fill: false, tension: 0.3, pointRadius: 3,
+      pointBackgroundColor: '#22C55E', yAxisID: 'yTime', order: 1
+    });
+  }
+
+  const newChart = new Chart(ctx, {
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: 'Noto Sans JP' } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null) return ctx.dataset.label + ': データなし';
+              if (ctx.dataset.yAxisID === 'yTime') {
+                const m = Math.floor(v / 60);
+                const s = v % 60;
+                return ctx.dataset.label + ': ' + (m > 0 ? m + '分' : '') + s + '秒 (' + v + '秒)';
+              }
+              return ctx.dataset.label + ': ' + v + '問';
+            }
+          }
+        }
+      },
+      scales: {
+        yScore: {
+          position: 'left', min: 0, max: 100,
+          title: { display: true, text: '正答数（問）', font: { family: 'Noto Sans JP' } },
+          grid: { color: 'rgba(59,130,246,0.08)' }
+        },
+        yTime: {
+          position: 'right', min: 0, max: 180,
+          title: { display: true, text: 'タイム（秒）', font: { family: 'Noto Sans JP' } },
+          grid: { drawOnChartArea: false },
+          ticks: {
+            callback: v => { const m = Math.floor(v/60); const s = v%60; return m > 0 ? m+'分'+s+'秒' : s+'秒'; }
+          }
+        },
+        x: { ticks: { maxRotation: 45, font: { size: 11 } } }
+      }
+    }
+  });
+
+  if (canvasId === 'myChart') myChart = newChart;
+  else viewChart = newChart;
+}
+
+function renderRecordsList(records, containerId) {
+  const container = document.getElementById(containerId);
+  if (!records || records.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:24px;">まだ記録がありません。</p>';
+    return;
+  }
+  const sorted = [...records].reverse();
+  const tagClass = { 'たし算': 'tag-add', 'ひき算': 'tag-sub', 'かけ算': 'tag-mul' };
+  container.innerHTML = '<div class="records-grid">' + sorted.map(r => {
+    const m = Math.floor(r.time / 60), s = r.time % 60;
+    const timeStr = (m > 0 ? m + '分' : '') + s + '秒';
+    const tag = tagClass[r.subject] || '';
+    return `<div class="record-card">
+      <div class="rec-date">${r.date}</div>
+      <span class="subject-tag ${tag}">${r.subject}</span>
+      <div class="rec-score">${r.score}<span>問 / 100問</span></div>
+      <div class="rec-time">⏱ ${timeStr} ｜ プリント ${r.printNo}番</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ============================================================
+// 教師ページ
+// ============================================================
+function loadTeacherPage() {
+  loadRoster();
+  loadPasswords();
+  loadStudentSelectForView();
+}
+
+function switchTab(tab) {
+  ['roster', 'password', 'view'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('tab-content-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+// --- 名簿管理 ---
+function loadRoster() {
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) renderRoster(res.students);
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .getStudentList();
+}
+
+function renderRoster(students) {
+  const tbody = document.getElementById('roster-tbody');
+  const empty = document.getElementById('roster-empty');
+  if (!students || students.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  tbody.innerHTML = students.map(s => `
+    <tr>
+      <td>${s.seatNo}</td>
+      <td>${s.name}</td>
+      <td><code>${s.loginId}</code></td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.seatNo}', '${s.name}')">🗑 削除</button>
+      </td>
+    </tr>`).join('');
+}
+
+function addStudent() {
+  const seatNo = document.getElementById('new-seat').value.trim();
+  const name = document.getElementById('new-name').value.trim();
+  const loginId = document.getElementById('new-loginid').value.trim();
+  if (!seatNo || !name) { showToast('出席番号と氏名を入力してください', 'error'); return; }
+  google.script.run
+    .withSuccessHandler(res => {
+      showToast(res.message, res.success ? 'success' : 'error');
+      if (res.success) {
+        document.getElementById('new-seat').value = '';
+        document.getElementById('new-name').value = '';
+        document.getElementById('new-loginid').value = '';
+        loadRoster();
+        loadStudentSelectForView();
+      }
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .addOrUpdateStudent({ seatNo, name, loginId });
+}
+
+function deleteStudent(seatNo, name) {
+  if (!confirm(name + ' さんを削除しますか？')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      showToast(res.message, res.success ? 'success' : 'error');
+      if (res.success) { loadRoster(); loadStudentSelectForView(); }
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .deleteStudent(seatNo);
+}
+
+function deleteAllStudents() {
+  if (!confirm('全児童のデータを削除しますか？この操作は取り消せません。')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      showToast(res.message, res.success ? 'success' : 'error');
+      if (res.success) { loadRoster(); loadStudentSelectForView(); }
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .deleteAllStudents();
+}
+
+// Excelアップロード
+function handleExcelUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    excelPendingData = [];
+    json.forEach(row => {
+      if (row[0] && row[1]) {
+        const seatNo = String(row[0]).trim();
+        const name = String(row[1]).trim();
+        if (seatNo && name && !isNaN(seatNo)) {
+          excelPendingData.push({ seatNo, name });
+        }
+      }
+    });
+    if (excelPendingData.length === 0) {
+      showToast('有効なデータが見つかりませんでした。A列: 出席番号, B列: 氏名 の形式を確認してください。', 'error');
+      return;
+    }
+    document.getElementById('excel-preview-msg').textContent =
+      excelPendingData.length + '名のデータを読み込みました。登録しますか？';
+    document.getElementById('excel-preview').classList.remove('hidden');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function confirmExcelUpload() {
+  if (!excelPendingData.length) return;
+  showLoading('名簿を登録中...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      showToast(res.message, res.success ? 'success' : 'error');
+      document.getElementById('excel-preview').classList.add('hidden');
+      document.getElementById('excel-upload').value = '';
+      excelPendingData = [];
+      if (res.success) { loadRoster(); loadStudentSelectForView(); }
+    })
+    .withFailureHandler(err => { hideLoading(); showToast('エラー: ' + err.message, 'error'); })
+    .saveStudentList(excelPendingData);
+}
+
+function cancelExcelUpload() {
+  document.getElementById('excel-preview').classList.add('hidden');
+  document.getElementById('excel-upload').value = '';
+  excelPendingData = [];
+}
+
+// --- パスワード管理 ---
+function loadPasswords() {
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) { passwordsCache = res.passwords; renderPasswords(); }
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .getAllPasswords();
+}
+
+function renderPasswords() {
+  const tbody = document.getElementById('password-tbody');
+  const empty = document.getElementById('pass-empty');
+  if (!passwordsCache || passwordsCache.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  tbody.innerHTML = passwordsCache.map((p, idx) => {
+    const passDisplay = p.password ? (showAllPasswords ? p.password : '••••••••') : '（未設定）';
+    return `<tr>
+      <td>${p.seatNo}</td>
+      <td>${p.name}</td>
+      <td><code>${p.loginId}</code></td>
+      <td>
+        <span class="pass-text" id="pass-text-${idx}">${passDisplay}</span>
+      </td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-secondary btn-sm" onclick="promptChangePassword('${p.seatNo}', '${p.name}')">✏️ 変更</button>
+          <button class="btn btn-warning btn-sm" onclick="resetPassword('${p.seatNo}', '${p.name}')">🔄 リセット</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleAllPasswords() {
+  showAllPasswords = !showAllPasswords;
+  renderPasswords();
+}
+
+function promptChangePassword(seatNo, name) {
+  const newPass = prompt(name + ' さんの新しいパスワードを入力してください（4文字以上）:');
+  if (!newPass || newPass.trim().length < 4) {
+    if (newPass !== null) showToast('パスワードは4文字以上にしてください', 'error');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(res => {
+      showToast(res.message, res.success ? 'success' : 'error');
+      if (res.success) loadPasswords();
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .updatePassword(seatNo, newPass.trim());
+}
+
+function resetPassword(seatNo, name) {
+  if (!confirm(name + ' さんのパスワードをリセットしますか？')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      showToast(res.message, res.success ? 'success' : 'error');
+      if (res.success) loadPasswords();
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .resetPassword(seatNo);
+}
+
+function resetAllPasswords() {
+  if (!confirm('全児童のパスワードをリセットしますか？次回ログイン時に再設定が必要になります。')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      showToast(res.message, res.success ? 'success' : 'error');
+      if (res.success) loadPasswords();
+    })
+    .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
+    .resetAllPasswords();
+}
+
+// --- 児童閲覧 ---
+function loadStudentSelectForView() {
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res.success) return;
+      const sel = document.getElementById('view-student-select');
+      sel.innerHTML = '<option value="">-- 児童を選んでください --</option>';
+      res.students.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.seatNo;
+        opt.textContent = s.seatNo + '番 ' + s.name;
+        sel.appendChild(opt);
+      });
+    })
+    .getStudentList();
+}
+
+function viewStudentPage() {
+  const seatNo = document.getElementById('view-student-select').value;
+  if (!seatNo) { showToast('児童を選んでください', 'error'); return; }
+  showLoading('記録を読み込み中...');
+  let studentRecords = [];
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (!res.success) { showToast(res.message, 'error'); return; }
+      studentRecords = res.records;
+      document.getElementById('view-student-name').textContent =
+        '📊 ' + res.studentName + ' さんの記録';
+      document.getElementById('view-student-content').classList.remove('hidden');
+      // グラフ用にキャッシュ
+      google.script.run
+        .withSuccessHandler(statsRes => {
+          if (statsRes.success) classStatsCache = statsRes.stats;
+          renderViewChartWith(studentRecords);
+          renderRecordsList(studentRecords, 'view-records-list');
+        })
+        .withFailureHandler(() => {
+          renderViewChartWith(studentRecords);
+          renderRecordsList(studentRecords, 'view-records-list');
+        })
+        .getClassStats();
+    })
+    .withFailureHandler(err => { hideLoading(); showToast('エラー: ' + err.message, 'error'); })
+    .getStudentRecords(seatNo);
+}
+
+let viewStudentRecordsCache = [];
+function renderViewChart() {
+  const filterSubject = document.getElementById('view-chart-subject').value;
+  renderChartCommon('viewChart', viewStudentRecordsCache, filterSubject, true);
+}
+
+function renderViewChartWith(records) {
+  viewStudentRecordsCache = records;
+  const filterSubject = document.getElementById('view-chart-subject').value;
+  renderChartCommon('viewChart', records, filterSubject, true);
+}
+
+// ============================================================
+// UI ユーティリティ
+// ============================================================
+function showAlert(containerId, message, type) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = `<div class="alert alert-${type === 'error' ? 'error' : 'success'}">${message}</div>`;
+}
+
+let toastTimer = null;
+function showToast(message, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'show ' + (type || 'info');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3500);
+}
+
+// Enterキーでログイン
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('login-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('login-id').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-pass').focus();
+  });
+});
+</script>
+</body>
+</html>
