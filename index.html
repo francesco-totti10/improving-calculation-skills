@@ -327,7 +327,10 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
       <!-- 名簿管理 -->
       <div class="tab-content active" id="tab-content-roster">
         <div class="card">
-          <div class="card-title">📥 Excelで一括登録</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;">📥 名簿の登録</div>
+            <button class="btn btn-warning btn-sm" onclick="confirmGenerateSampleData()">🧪 サンプルデータ作成</button>
+          </div>
           <label class="upload-area" for="excel-upload">
             <div style="font-size:2rem;">📂</div>
             <strong>Excelファイルをクリックして選択</strong>
@@ -1104,6 +1107,29 @@ function showToast(message, type) {
   toastTimer = setTimeout(() => {
     toast.classList.remove('show');
   }, 3500);
+}
+
+// サンプルデータ生成
+function confirmGenerateSampleData() {
+  if (!confirm('10人分の児童と100件の練習記録（直近10日分）を自動生成します。実行しますか？')) return;
+  showLoading('サンプルデータを生成中...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.success) {
+        showToast(res.message, 'success');
+        loadRoster();
+        loadPasswords();
+        loadStudentSelectForView();
+      } else {
+        showToast(res.message, 'error');
+      }
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('エラー: ' + err.message, 'error');
+    })
+    .generateSampleData();
 }
 
 // Enterキーでログイン

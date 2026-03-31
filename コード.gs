@@ -538,3 +538,58 @@ function formatDate(dateValue) {
     return String(dateValue);
   }
 }
+
+/**
+ * サンプルデータを生成する (児童10人 × 10日分 = 100件)
+ * 教師用ページから呼び出し可能
+ */
+function generateSampleData() {
+  try {
+    const userSheet = getUserSheet();
+    const recordSheet = getRecordSheet();
+    const subjects = ['たし算', 'ひき算', 'かけ算'];
+    let userAdded = 0;
+    let recordsAdded = 0;
+
+    // 1. 児童10人の登録 (既存がいればスキップ)
+    const users = getUserData();
+    for (let i = 1; i <= 10; i++) {
+      const seatNo = String(i);
+      const name = '児童' + seatNo.padStart(2, '0');
+      const loginId = 'student' + seatNo.padStart(2, '0');
+      
+      const idx = users.findIndex(u => String(u[COL_USER_SEAT - 1]) === seatNo);
+      if (idx < 0) {
+        userSheet.appendRow([seatNo, name, loginId, '', '児童']);
+        userAdded++;
+      }
+    }
+
+    // 2. 記録の生成 (各児童について、今日から遡って10日分)
+    const today = new Date();
+    for (let i = 1; i <= 10; i++) {
+      const seatNo = String(i);
+      
+      for (let day = 0; day < 10; day++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - day);
+        const dateStr = Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy/MM/dd');
+        
+        const subject = subjects[Math.floor(Math.random() * subjects.length)];
+        const printNo = Math.floor(Math.random() * 12) + 1;
+        const score = Math.floor(Math.random() * 11) + 90; // 90〜100点
+        const time = Math.floor(Math.random() * 91) + 60;   // 60〜150秒
+        
+        recordSheet.appendRow([dateStr, seatNo, subject, printNo, score, time]);
+        recordsAdded++;
+      }
+    }
+
+    return {
+      success: true,
+      message: 'サンプルデータを生成しました！\n児童: ' + userAdded + '名追加\n記録: ' + recordsAdded + '件追加'
+    };
+  } catch (e) {
+    return { success: false, message: '生成エラー: ' + e.message };
+  }
+}
