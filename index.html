@@ -623,6 +623,7 @@ function saveRecord() {
   document.getElementById('btn-save-record').disabled = true;
 
   const data = {
+    date: dateVal,
     seatNo: currentUser.seatNo,
     subject, printNo, wrongCount, minutes, seconds
   };

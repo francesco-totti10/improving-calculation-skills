@@ -95,8 +95,8 @@ function login(loginId, password) {
       const storedPass = row[COL_USER_PASS - 1]; // 文字列変換せずに取得
       
       if (storedId === String(loginId).trim()) {
-        // 初回登録（パスワード未設定、または空文字、null、空白のみの場合）
-        if (storedPass === '' || storedPass === null || storedPass === undefined || String(storedPass).trim() === '') {
+        // 初回登録（パスワード未設定、または空文字、null、空白のみ、文字列の'undefined'の場合）
+        if (storedPass === '' || storedPass === null || storedPass === undefined || String(storedPass).trim() === '' || String(storedPass) === 'undefined') {
           return {
             success: false,
             needsPasswordSetup: true,
@@ -169,7 +169,18 @@ function saveRecord(data) {
     const sheet = getRecordSheet();
     const score = 100 - parseInt(data.wrongCount, 10);
     const totalSeconds = parseInt(data.minutes, 10) * 60 + parseInt(data.seconds, 10);
-    const timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd');
+    
+    // 入力された日付を使用する
+    let timestamp;
+    if (data.date) {
+      const d = new Date(data.date);
+      if (!isNaN(d.getTime())) {
+        timestamp = Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy/MM/dd');
+      }
+    }
+    if (!timestamp) {
+      timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd');
+    }
     
     sheet.appendRow([
       timestamp,
