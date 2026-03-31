@@ -149,7 +149,7 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
 .record-card{background:linear-gradient(135deg,#F8FAFF,#EFF6FF);border:1px solid #BFDBFE;border-radius:12px;padding:16px;transition:.2s;}
 .record-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(59,130,246,.12);}
 .record-card .rec-date{font-size:.8rem;color:var(--text-muted);font-weight:700;}
-.record-card .rec-subject{font-size.9rem;font-weight:700;color:var(--primary);margin:4px 0;}
+.record-card .rec-subject{font-size: .9rem;font-weight:700;color:var(--primary);margin:4px 0;}
 .record-card .rec-score{font-size:1.8rem;font-weight:900;color:var(--text);}
 .record-card .rec-score span{font-size:.9rem;color:var(--text-muted);}
 .record-card .rec-time{font-size:.85rem;color:var(--text-muted);}
@@ -171,6 +171,89 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
   header h1{font-size:1rem;}
   .section-title{font-size:1.2rem;}
 }
+  /* ===== 更新コントロール ===== */
+  .refresh-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-right: 8px;
+    background: rgba(255,255,255,0.1);
+    padding: 6px 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 30px;
+  }
+  .btn-refresh {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 20px;
+    transition: 0.2s;
+  }
+  .btn-refresh:hover {
+    background: rgba(255,255,255,0.15);
+  }
+  .btn-refresh.spinning .icon {
+    animation: spin 1s linear infinite;
+  }
+  .auto-refresh-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    border-left: 1px solid rgba(255,255,255,0.3);
+    padding-left: 12px;
+  }
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255,255,255,0.3);
+    transition: .4s;
+    border-radius: 20px;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 14px; width: 14px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  input:checked + .slider { background-color: var(--success); }
+  input:checked + .slider:before { transform: translateX(16px); }
+  
+  .last-update-time {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.7);
+    margin-top: 2px;
+  }
+
+  @media(max-width: 900px) {
+    .refresh-controls { gap: 10px; padding: 4px 10px; }
+    .auto-refresh-label { display: none; }
+  }
+  @media(max-width: 600px) {
+    .refresh-controls { order: 3; width: 100%; justify-content: center; margin-top: 8px; background: rgba(0,0,0,0.05); }
+    header { height: auto; padding: 12px 24px; flex-wrap: wrap; }
+    .header-right { width: 100%; justify-content: space-between; margin-top: 8px; }
+  }
 </style>
 </head>
 <body>
@@ -235,6 +318,22 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
   <header>
     <h1>🧮 百問計算 記録アプリ</h1>
     <div class="header-right">
+      <div class="refresh-controls">
+        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+          <button class="btn-refresh" id="btn-refresh" onclick="refreshData()">
+            <span class="icon">🔄</span>
+            <span>更新</span>
+          </button>
+          <div class="last-update-time" id="last-update-time">未更新</div>
+        </div>
+        <div class="auto-refresh-toggle">
+          <span class="auto-refresh-label">自動更新</span>
+          <label class="switch">
+            <input type="checkbox" id="auto-refresh-check" onchange="toggleAutoRefresh()">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
       <span class="user-badge" id="user-badge">---</span>
       <button class="btn btn-logout" onclick="doLogout()">ログアウト</button>
     </div>
@@ -472,6 +571,8 @@ let excelPendingData = [];
 let showAllPasswords = false;
 let passwordsCache = [];
 let authUsers = []; // 追加：ログイン用ユーザーリスト
+let autoRefreshTimer = null;
+let isRefreshing = false;
 
 // ============================================================
 // 初期化
@@ -641,7 +742,116 @@ function doLogout() {
   
   // 表示切替
   document.getElementById('app').style.display = 'none';
+  
+  // 自動更新停止
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+    document.getElementById('auto-refresh-check').checked = false;
+  }
+  
   showLoginPage();
+}
+
+// ============================================================
+// データ更新ロジック
+// ============================================================
+function refreshData(isAuto = false) {
+  if (isRefreshing) return;
+  if (!currentUser) return;
+
+  const btn = document.getElementById('btn-refresh');
+  isRefreshing = true;
+  btn.classList.add('spinning');
+  if (!isAuto) showToast('データを更新中...', 'info');
+
+  const promises = [];
+
+  if (currentUser.role === '教師') {
+    const activeTab = document.querySelector('.tab-btn.active').id;
+    if (activeTab === 'tab-roster') {
+      promises.push(new Promise(resolve => {
+        google.script.run.withSuccessHandler(res => {
+          if (res.success) renderRoster(res.students);
+          resolve();
+        }).getStudentList();
+      }));
+    } else if (activeTab === 'tab-password') {
+      promises.push(new Promise(resolve => {
+        google.script.run.withSuccessHandler(res => {
+          if (res.success) { passwordsCache = res.passwords; renderPasswords(); }
+          resolve();
+        }).getAllPasswords();
+      }));
+    } else if (activeTab === 'tab-view') {
+      const seatNo = document.getElementById('view-student-select').value;
+      if (seatNo) {
+        promises.push(new Promise(resolve => {
+          google.script.run.withSuccessHandler(res => {
+            if (res.success) {
+              viewStudentRecordsCache = res.records;
+              updateViewStudentView();
+            }
+            resolve();
+          }).getStudentRecords(seatNo);
+        }));
+      } else {
+        promises.push(Promise.resolve());
+      }
+    }
+  } else {
+    // 児童用
+    promises.push(new Promise(resolve => {
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) myRecordsCache = res.records;
+        resolve();
+      }).getMyRecords(currentUser.seatNo);
+    }));
+    promises.push(new Promise(resolve => {
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          classStatsCache = res.stats;
+          updateStudentView();
+        }
+        resolve();
+      }).getClassStats();
+    }));
+  }
+
+  Promise.all(promises).then(() => {
+    isRefreshing = false;
+    btn.classList.remove('spinning');
+    updateLastRefreshed();
+    if (!isAuto) showToast('データを更新しました', 'success');
+  }).catch(err => {
+    isRefreshing = false;
+    btn.classList.remove('spinning');
+    console.error('Refresh error:', err);
+  });
+}
+
+function toggleAutoRefresh() {
+  const isChecked = document.getElementById('auto-refresh-check').checked;
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+  
+  if (isChecked) {
+    showToast('自動更新をONにしました（60秒間隔）', 'success');
+    // 60秒間隔で実行
+    autoRefreshTimer = setInterval(() => {
+      refreshData(true);
+    }, 60000);
+  } else {
+    showToast('自動更新をOFFにしました', 'info');
+  }
+}
+
+function updateLastRefreshed() {
+  const now = new Date();
+  const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('last-update-time').textContent = timeStr + ' 更新';
 }
 
 // ============================================================
