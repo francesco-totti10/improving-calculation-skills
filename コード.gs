@@ -80,21 +80,42 @@ function getRecordData() {
 // 認証機能
 // =============================================
 
+
+/**
+ * ログイン画面用：氏名表示のためのユーザー一覧取得
+ * パスワードは含まず、出席番号と名前、ログインIDのみ返す
+ */
+function getLoginUsers() {
+  try {
+    const users = getUserData();
+    const result = users.map(row => ({
+      seatNo: String(row[COL_USER_SEAT - 1]).trim(),
+      name: String(row[COL_USER_NAME - 1]).trim(),
+      loginId: String(row[COL_USER_ID - 1]).trim()
+    }));
+    return { success: true, users: result };
+  } catch (e) {
+    return { success: false, message: 'ユーザー覧の取得エラー: ' + e.message, users: [] };
+  }
+}
+
 /**
  * ログイン処理
- * @param {string} loginId - ログインID
+ * @param {string} identifier - 出席番号 または ログインID
  * @param {string} password - パスワード
  * @returns {Object} - {success, user: {seatNo, name, loginId, role}, message}
  */
-function login(loginId, password) {
+function login(identifier, password) {
   try {
     const users = getUserData();
     for (let i = 0; i < users.length; i++) {
       const row = users[i];
+      const storedSeat = String(row[COL_USER_SEAT - 1]).trim();
       const storedId = String(row[COL_USER_ID - 1]).trim();
       const storedPass = row[COL_USER_PASS - 1]; // 文字列変換せずに取得
       
-      if (storedId === String(loginId).trim()) {
+      // 出席番号かログインIDのいずれかに一致すればOK
+      if (storedSeat === String(identifier).trim() || storedId === String(identifier).trim()) {
         // 初回登録（パスワード未設定、または空文字、null、空白のみ、文字列の'undefined'の場合）
         if (storedPass === '' || storedPass === null || storedPass === undefined || String(storedPass).trim() === '' || String(storedPass) === 'undefined') {
           return {
@@ -133,17 +154,18 @@ function login(loginId, password) {
 
 /**
  * 初回パスワード登録
- * @param {string} loginId - ログインID
+ * @param {string} identifier - 出席番号 または ログインID
  * @param {string} newPassword - 新しいパスワード
  * @returns {Object} - {success, message}
  */
-function registerPassword(loginId, newPassword) {
+function registerPassword(identifier, newPassword) {
   try {
     const sheet = getUserSheet();
     const users = getUserData();
     for (let i = 0; i < users.length; i++) {
+      const storedSeat = String(users[i][COL_USER_SEAT - 1]).trim();
       const storedId = String(users[i][COL_USER_ID - 1]).trim();
-      if (storedId === String(loginId).trim()) {
+      if (storedSeat === String(identifier).trim() || storedId === String(identifier).trim()) {
         const rowNum = i + 2; // ヘッダー行分 +1、0-indexed分 +1
         sheet.getRange(rowNum, COL_USER_PASS).setValue(String(newPassword).trim());
         return { success: true, message: 'パスワードを設定しました。' };

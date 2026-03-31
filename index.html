@@ -191,16 +191,23 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
     </div>
     <!-- 通常ログイン -->
     <div id="login-form-area">
+      <p style="font-size:0.9rem; color:var(--text-muted); text-align:center; margin-bottom:16px;">
+        ※出席番号（先生の場合は teacher 等）を入力すると名前が表示されます
+      </p>
       <div class="form-group">
-        <label for="login-id">ログインID</label>
-        <input type="text" id="login-id" placeholder="例: student01" autocomplete="username">
+        <label for="login-seat">出席番号 / ログインID</label>
+        <input type="text" id="login-seat" placeholder="例: 1 または teacher" autocomplete="username">
       </div>
-      <div class="form-group">
+      <div class="form-group" style="background:#F8FAFF; padding:12px; border-radius:8px; text-align:center; border:1px solid var(--border);">
+        <span style="font-size:0.85rem; color:var(--text-muted); display:block; margin-bottom:4px;">あなたのお名前</span>
+        <strong id="login-name-display" style="font-size:1.2rem; color:var(--primary);">---</strong>
+      </div>
+      <div class="form-group" style="margin-top:16px;">
         <label for="login-pass">パスワード</label>
-        <input type="password" id="login-pass" placeholder="パスワードを入力" autocomplete="current-password">
+        <input type="password" id="login-pass" placeholder="パスワードを入力" autocomplete="current-password" disabled>
       </div>
       <div id="login-alert"></div>
-      <button class="btn btn-primary" id="btn-login" onclick="doLogin()" style="margin-top:8px;">
+      <button class="btn btn-primary" id="btn-login" onclick="doLogin()" style="margin-top:8px;" disabled>
         🔑 ログイン
       </button>
     </div>
@@ -290,11 +297,23 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
         </div>
       </div>
 
-      <div class="section-title"><span class="icon">📊</span>グラフで見る</div>
+      <div class="section-title"><span class="icon">📊</span>グラフと記録一覧</div>
       <div class="card">
         <div class="chart-filter">
-          <span class="filter-label">種目：</span>
-          <select id="chart-subject" onchange="renderChart()" style="width:auto;padding:8px 14px;">
+          <span class="filter-label">期間：</span>
+          <select id="chart-period" onchange="togglePeriodInputs('student'); updateStudentView()" style="width:auto;padding:8px 14px;">
+            <option value="すべて">すべて</option>
+            <option value="今月">今月</option>
+            <option value="先月">先月</option>
+            <option value="期間を指定">期間を指定</option>
+          </select>
+          <div id="chart-period-custom" class="hidden" style="display:inline-flex; gap:8px; align-items:center;">
+            <input type="date" id="chart-start" onchange="updateStudentView()" style="padding:6px; border:1px solid #ccc; border-radius:4px;"> 
+            <span style="color:var(--text-muted)">〜</span> 
+            <input type="date" id="chart-end" onchange="updateStudentView()" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
+          </div>
+          <span class="filter-label" style="margin-left:12px;">種目：</span>
+          <select id="chart-subject" onchange="updateStudentView()" style="width:auto;padding:8px 14px;">
             <option value="すべて">すべて</option>
             <option value="たし算">たし算</option>
             <option value="ひき算">ひき算</option>
@@ -305,12 +324,10 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
           <canvas id="myChart"></canvas>
         </div>
         <div style="text-align:center;margin-top:10px;" id="no-chart-msg" class="hidden">
-          <p style="color:var(--text-muted);">まだ記録がありません。記録を入力するとグラフが表示されます。</p>
+          <p style="color:var(--text-muted);">まだ記録がありません。記録を入力するとグラフと一覧が表示されます。</p>
         </div>
-      </div>
-
-      <div class="section-title"><span class="icon">📋</span>記録一覧</div>
-      <div class="card">
+        <hr style="border:0; border-top:1px solid var(--border); margin:24px 0;">
+        <div class="card-title">📋 記録一覧</div>
         <div id="records-list"></div>
       </div>
     </div>
@@ -414,8 +431,20 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
           <div class="card">
             <div class="card-title" id="view-student-name"></div>
             <div class="chart-filter">
-              <span class="filter-label">種目：</span>
-              <select id="view-chart-subject" onchange="renderViewChart()" style="width:auto;padding:8px 14px;">
+              <span class="filter-label">期間：</span>
+              <select id="view-chart-period" onchange="togglePeriodInputs('view'); updateViewStudentView()" style="width:auto;padding:8px 14px;">
+                <option value="すべて">すべて</option>
+                <option value="今月">今月</option>
+                <option value="先月">先月</option>
+                <option value="期間を指定">期間を指定</option>
+              </select>
+              <div id="view-chart-period-custom" class="hidden" style="display:inline-flex; gap:8px; align-items:center;">
+                <input type="date" id="view-chart-start" onchange="updateViewStudentView()" style="padding:6px; border:1px solid #ccc; border-radius:4px;"> 
+                <span style="color:var(--text-muted)">〜</span> 
+                <input type="date" id="view-chart-end" onchange="updateViewStudentView()" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
+              </div>
+              <span class="filter-label" style="margin-left:12px;">種目：</span>
+              <select id="view-chart-subject" onchange="updateViewStudentView()" style="width:auto;padding:8px 14px;">
                 <option value="すべて">すべて</option>
                 <option value="たし算">たし算</option>
                 <option value="ひき算">ひき算</option>
@@ -449,21 +478,41 @@ let viewChart = null;
 let excelPendingData = [];
 let showAllPasswords = false;
 let passwordsCache = [];
+let authUsers = []; // 追加：ログイン用ユーザーリスト
 
 // ============================================================
 // 初期化
 // ============================================================
 window.onload = function() {
+  // イベントリスナー登録
+  document.getElementById('login-seat').addEventListener('input', handleLoginSeatInput);
+  
   const savedUser = sessionStorage.getItem('currentUser');
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
     hideLoading();
     showApp();
   } else {
-    hideLoading();
-    showLoginPage();
+    loadAuthUsersForLogin();
   }
 };
+
+function loadAuthUsersForLogin() {
+  showLoading('起動準備中...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.success) {
+        authUsers = res.users;
+      }
+      showLoginPage();
+    })
+    .withFailureHandler(() => {
+      hideLoading();
+      showLoginPage();
+    })
+    .getLoginUsers();
+}
 
 function hideLoading() {
   document.getElementById('loading-overlay').classList.add('hidden');
@@ -487,10 +536,35 @@ function showLoginPage() {
   const dd = String(today.getDate()).padStart(2, '0');
 }
 
+function handleLoginSeatInput() {
+  const val = document.getElementById('login-seat').value.trim();
+  const nameDisplay = document.getElementById('login-name-display');
+  const passInput = document.getElementById('login-pass');
+  const loginBtn = document.getElementById('btn-login');
+
+  if (!val) {
+    nameDisplay.textContent = '---';
+    passInput.disabled = true;
+    loginBtn.disabled = true;
+    return;
+  }
+
+  const user = authUsers.find(u => u.seatNo === val || u.loginId === val);
+  if (user) {
+    nameDisplay.textContent = user.name + ' さん';
+    passInput.disabled = false;
+    loginBtn.disabled = false;
+  } else {
+    nameDisplay.textContent = '見つかりません';
+    passInput.disabled = true;
+    loginBtn.disabled = true;
+  }
+}
+
 function doLogin() {
-  const loginId = document.getElementById('login-id').value.trim();
+  const loginId = document.getElementById('login-seat').value.trim();
   const password = document.getElementById('login-pass').value.trim();
-  if (!loginId) { showAlert('login-alert', 'ログインIDを入力してください。', 'error'); return; }
+  if (!loginId) { showAlert('login-alert', '出席番号を入力してください。', 'error'); return; }
   // 初回ログイン時はパスワードが空なので、バリデーションを緩和します
   
   document.getElementById('btn-login').textContent = '確認中...';
@@ -561,7 +635,20 @@ function doLogout() {
   currentUser = null;
   myRecordsCache = [];
   classStatsCache = {};
-  location.reload();
+  
+  // フォームリセット
+  document.getElementById('login-seat').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-pass').disabled = true;
+  document.getElementById('btn-login').disabled = true;
+  document.getElementById('login-name-display').textContent = '---';
+  
+  document.getElementById('login-alert').innerHTML = '';
+  document.getElementById('setup-alert').innerHTML = '';
+  
+  // 表示切替
+  document.getElementById('app').style.display = 'none';
+  showLoginPage();
 }
 
 // ============================================================
@@ -669,19 +756,62 @@ function loadClassStats() {
   google.script.run
     .withSuccessHandler(res => {
       if (res.success) classStatsCache = res.stats;
-      renderChart();
-      renderRecordsList(myRecordsCache, 'records-list');
+      updateStudentView();
     })
     .withFailureHandler(() => {
-      renderChart();
-      renderRecordsList(myRecordsCache, 'records-list');
+      updateStudentView();
     })
     .getClassStats();
 }
 
-function renderChart() {
-  const filterSubject = document.getElementById('chart-subject').value;
-  renderChartCommon('myChart', myRecordsCache, filterSubject, true);
+function togglePeriodInputs(prefix) {
+  const val = document.getElementById(prefix + '-chart-period').value;
+  const customDiv = document.getElementById(prefix + '-chart-period-custom');
+  if (val === '期間を指定') customDiv.classList.remove('hidden');
+  else customDiv.classList.add('hidden');
+}
+
+function filterRecordsByPeriod(records, period, start, end) {
+  if (period === 'すべて') return records;
+  const today = new Date();
+  const currentY = today.getFullYear();
+  const currentM = today.getMonth(); // 0-11
+  
+  return records.filter(r => {
+    const d = new Date(r.date);
+    if (isNaN(d.getTime())) return false;
+    
+    if (period === '今月') {
+      return d.getFullYear() === currentY && d.getMonth() === currentM;
+    } else if (period === '先月') {
+      let prevY = currentY, prevM = currentM - 1;
+      if (prevM < 0) { prevM = 11; prevY--; }
+      return d.getFullYear() === prevY && d.getMonth() === prevM;
+    } else if (period === '期間を指定') {
+      if (start) {
+        const s = new Date(start);
+        s.setHours(0,0,0,0);
+        if (d < s) return false;
+      }
+      if (end) {
+        const e = new Date(end);
+        e.setHours(23,59,59,999);
+        if (d > e) return false;
+      }
+    }
+    return true;
+  });
+}
+
+function updateStudentView() {
+  const period = document.getElementById('chart-period').value;
+  const start = document.getElementById('chart-start').value;
+  const end = document.getElementById('chart-end').value;
+  const subject = document.getElementById('chart-subject').value;
+  
+  let filtered = filterRecordsByPeriod(myRecordsCache, period, start, end);
+  renderChartCommon('myChart', filtered, subject, true);
+  renderRecordsList(filtered, 'records-list');
 }
 
 function renderChartCommon(canvasId, records, filterSubject, showClassStats) {
@@ -1066,12 +1196,15 @@ function viewStudentPage() {
       google.script.run
         .withSuccessHandler(statsRes => {
           if (statsRes.success) classStatsCache = statsRes.stats;
-          renderViewChartWith(studentRecords);
-          renderRecordsList(studentRecords, 'view-records-list');
+          viewStudentRecordsCache = studentRecords;
+          // 初期化
+          document.getElementById('view-chart-period').value = 'すべて';
+          togglePeriodInputs('view');
+          updateViewStudentView();
         })
         .withFailureHandler(() => {
-          renderViewChartWith(studentRecords);
-          renderRecordsList(studentRecords, 'view-records-list');
+          viewStudentRecordsCache = studentRecords;
+          updateViewStudentView();
         })
         .getClassStats();
     })
@@ -1080,15 +1213,16 @@ function viewStudentPage() {
 }
 
 let viewStudentRecordsCache = [];
-function renderViewChart() {
-  const filterSubject = document.getElementById('view-chart-subject').value;
-  renderChartCommon('viewChart', viewStudentRecordsCache, filterSubject, true);
-}
 
-function renderViewChartWith(records) {
-  viewStudentRecordsCache = records;
-  const filterSubject = document.getElementById('view-chart-subject').value;
-  renderChartCommon('viewChart', records, filterSubject, true);
+function updateViewStudentView() {
+  const period = document.getElementById('view-chart-period').value;
+  const start = document.getElementById('view-chart-start').value;
+  const end = document.getElementById('view-chart-end').value;
+  const subject = document.getElementById('view-chart-subject').value;
+  
+  let filtered = filterRecordsByPeriod(viewStudentRecordsCache, period, start, end);
+  renderChartCommon('viewChart', filtered, subject, true);
+  renderRecordsList(filtered, 'view-records-list');
 }
 
 // ============================================================
@@ -1136,10 +1270,13 @@ function confirmGenerateSampleData() {
 // Enterキーでログイン
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-pass').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
+    if (e.key === 'Enter' && !e.target.disabled) doLogin();
   });
-  document.getElementById('login-id').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('login-pass').focus();
+  document.getElementById('login-seat').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const pass = document.getElementById('login-pass');
+      if(!pass.disabled) pass.focus();
+    }
   });
 });
 </script>
