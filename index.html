@@ -191,12 +191,9 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
     </div>
     <!-- 通常ログイン -->
     <div id="login-form-area">
-      <p style="font-size:0.9rem; color:var(--text-muted); text-align:center; margin-bottom:16px;">
-        ※出席番号（先生の場合は teacher 等）を入力すると名前が表示されます
-      </p>
       <div class="form-group">
-        <label for="login-seat">出席番号 / ログインID</label>
-        <input type="text" id="login-seat" placeholder="例: 1 または teacher" autocomplete="username">
+        <label for="login-seat">出席番号</label>
+        <input type="text" id="login-seat" placeholder="例: 1" autocomplete="username">
       </div>
       <div class="form-group" style="background:#F8FAFF; padding:12px; border-radius:8px; text-align:center; border:1px solid var(--border);">
         <span style="font-size:0.85rem; color:var(--text-muted); display:block; margin-bottom:4px;">あなたのお名前</span>
@@ -373,10 +370,6 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
               <label>氏名</label>
               <input type="text" id="new-name" placeholder="例: 山田 太郎">
             </div>
-            <div class="form-group">
-              <label>ログインID（省略可）</label>
-              <input type="text" id="new-loginid" placeholder="自動生成">
-            </div>
             <button class="btn btn-primary" onclick="addStudent()" style="align-self:flex-end;">追加・更新</button>
           </div>
         </div>
@@ -387,7 +380,7 @@ input.pass-input:focus{border-color:var(--primary);outline:none;}
           </div>
           <div class="table-wrap">
             <table id="roster-table">
-              <thead><tr><th>出席番号</th><th>氏名</th><th>ログインID</th><th>操作</th></tr></thead>
+              <thead><tr><th>出席番号</th><th>氏名</th><th>操作</th></tr></thead>
               <tbody id="roster-tbody"></tbody>
             </table>
           </div>
@@ -549,7 +542,7 @@ function handleLoginSeatInput() {
     return;
   }
 
-  const user = authUsers.find(u => u.seatNo === val || u.loginId === val);
+  const user = authUsers.find(u => u.seatNo === val);
   if (user) {
     nameDisplay.textContent = user.name + ' さん';
     passInput.disabled = false;
@@ -627,7 +620,7 @@ function doSetupPassword() {
       }
     })
     .withFailureHandler(err => showAlert('setup-alert', err.message, 'error'))
-    .registerPassword(currentUser.loginId, newPass);
+    .registerPassword(currentUser.seatNo, newPass);
 }
 
 function doLogout() {
@@ -980,7 +973,6 @@ function renderRoster(students) {
     <tr>
       <td>${s.seatNo}</td>
       <td>${s.name}</td>
-      <td><code>${s.loginId}</code></td>
       <td>
         <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.seatNo}', '${s.name}')">🗑 削除</button>
       </td>
@@ -990,7 +982,6 @@ function renderRoster(students) {
 function addStudent() {
   const seatNo = document.getElementById('new-seat').value.trim();
   const name = document.getElementById('new-name').value.trim();
-  const loginId = document.getElementById('new-loginid').value.trim();
   if (!seatNo || !name) { showToast('出席番号と氏名を入力してください', 'error'); return; }
   google.script.run
     .withSuccessHandler(res => {
@@ -998,13 +989,12 @@ function addStudent() {
       if (res.success) {
         document.getElementById('new-seat').value = '';
         document.getElementById('new-name').value = '';
-        document.getElementById('new-loginid').value = '';
         loadRoster();
         loadStudentSelectForView();
       }
     })
     .withFailureHandler(err => showToast('エラー: ' + err.message, 'error'))
-    .addOrUpdateStudent({ seatNo, name, loginId });
+    .addOrUpdateStudent({ seatNo, name });
 }
 
 function deleteStudent(seatNo, name) {
@@ -1106,7 +1096,6 @@ function renderPasswords() {
     return `<tr>
       <td>${p.seatNo}</td>
       <td>${p.name}</td>
-      <td><code>${p.loginId}</code></td>
       <td>
         <span class="pass-text" id="pass-text-${idx}">${passDisplay}</span>
       </td>

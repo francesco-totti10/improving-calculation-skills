@@ -14,9 +14,8 @@ const SHEET_USERS = 'ユーザー';
 const SHEET_RECORDS = '記録';
 const COL_USER_SEAT = 1;     // A: 出席番号
 const COL_USER_NAME = 2;     // B: 氏名
-const COL_USER_ID = 3;       // C: ログインID
-const COL_USER_PASS = 4;     // D: パスワード
-const COL_USER_ROLE = 5;     // E: 権限
+const COL_USER_PASS = 3;     // C: パスワード
+const COL_USER_ROLE = 4;     // D: 権限
 const COL_REC_TIMESTAMP = 1; // A: タイムスタンプ
 const COL_REC_SEAT = 2;      // B: 出席番号
 const COL_REC_SUBJECT = 3;   // C: 種目
@@ -46,7 +45,7 @@ function getUserSheet() {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_USERS);
     // ヘッダー行を追加
-    sheet.appendRow(['出席番号', '氏名', 'ログインID', 'パスワード', '権限']);
+    sheet.appendRow(['出席番号', '氏名', 'パスワード', '権限']);
   }
   return sheet;
 }
@@ -66,7 +65,7 @@ function getUserData() {
   const sheet = getUserSheet();
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
-  return sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  return sheet.getRange(2, 1, lastRow - 1, 4).getValues();
 }
 
 function getRecordData() {
@@ -83,39 +82,37 @@ function getRecordData() {
 
 /**
  * ログイン画面用：氏名表示のためのユーザー一覧取得
- * パスワードは含まず、出席番号と名前、ログインIDのみ返す
+ * パスワードは含まず、出席番号と名前のみ返す
  */
 function getLoginUsers() {
   try {
     const users = getUserData();
     const result = users.map(row => ({
       seatNo: String(row[COL_USER_SEAT - 1]).trim(),
-      name: String(row[COL_USER_NAME - 1]).trim(),
-      loginId: String(row[COL_USER_ID - 1]).trim()
+      name: String(row[COL_USER_NAME - 1]).trim()
     }));
     return { success: true, users: result };
   } catch (e) {
-    return { success: false, message: 'ユーザー覧の取得エラー: ' + e.message, users: [] };
+    return { success: false, message: 'ユーザー一覧の取得エラー: ' + e.message, users: [] };
   }
 }
 
 /**
  * ログイン処理
- * @param {string} identifier - 出席番号 または ログインID
+ * @param {string} seatNo - 出席番号
  * @param {string} password - パスワード
- * @returns {Object} - {success, user: {seatNo, name, loginId, role}, message}
+ * @returns {Object} - {success, user: {seatNo, name, role}, message}
  */
-function login(identifier, password) {
+function login(seatNo, password) {
   try {
     const users = getUserData();
     for (let i = 0; i < users.length; i++) {
       const row = users[i];
       const storedSeat = String(row[COL_USER_SEAT - 1]).trim();
-      const storedId = String(row[COL_USER_ID - 1]).trim();
       const storedPass = row[COL_USER_PASS - 1]; // 文字列変換せずに取得
       
-      // 出席番号かログインIDのいずれかに一致すればOK
-      if (storedSeat === String(identifier).trim() || storedId === String(identifier).trim()) {
+      // 出席番号が一致すればOK
+      if (storedSeat === String(seatNo).trim()) {
         // 初回登録（パスワード未設定、または空文字、null、空白のみ、文字列の'undefined'の場合）
         if (storedPass === '' || storedPass === null || storedPass === undefined || String(storedPass).trim() === '' || String(storedPass) === 'undefined') {
           return {
@@ -124,7 +121,6 @@ function login(identifier, password) {
             user: {
               seatNo: row[COL_USER_SEAT - 1],
               name: String(row[COL_USER_NAME - 1]),
-              loginId: storedId,
               role: String(row[COL_USER_ROLE - 1])
             },
             message: '初回ログインです。パスワードを設定してください。'
@@ -136,7 +132,6 @@ function login(identifier, password) {
             user: {
               seatNo: row[COL_USER_SEAT - 1],
               name: String(row[COL_USER_NAME - 1]),
-              loginId: storedId,
               role: String(row[COL_USER_ROLE - 1])
             },
             message: 'ログイン成功'
@@ -146,7 +141,7 @@ function login(identifier, password) {
         }
       }
     }
-    return { success: false, message: 'ログインIDが見つかりません。' };
+    return { success: false, message: '出席番号が見つかりません。' };
   } catch (e) {
     return { success: false, message: 'エラーが発生しました: ' + e.message };
   }
@@ -154,18 +149,17 @@ function login(identifier, password) {
 
 /**
  * 初回パスワード登録
- * @param {string} identifier - 出席番号 または ログインID
+ * @param {string} seatNo - 出席番号
  * @param {string} newPassword - 新しいパスワード
  * @returns {Object} - {success, message}
  */
-function registerPassword(identifier, newPassword) {
+function registerPassword(seatNo, newPassword) {
   try {
     const sheet = getUserSheet();
     const users = getUserData();
     for (let i = 0; i < users.length; i++) {
       const storedSeat = String(users[i][COL_USER_SEAT - 1]).trim();
-      const storedId = String(users[i][COL_USER_ID - 1]).trim();
-      if (storedSeat === String(identifier).trim() || storedId === String(identifier).trim()) {
+      if (storedSeat === String(seatNo).trim()) {
         const rowNum = i + 2; // ヘッダー行分 +1、0-indexed分 +1
         sheet.getRange(rowNum, COL_USER_PASS).setValue(String(newPassword).trim());
         return { success: true, message: 'パスワードを設定しました。' };
@@ -286,7 +280,7 @@ function getClassStats() {
 
 /**
  * 児童名簿を取得する
- * @returns {Object} - {success, students: [{seatNo, name, loginId, role}]}
+ * @returns {Object} - {success, students: [{seatNo, name, role}]}
  */
 function getStudentList() {
   try {
@@ -296,7 +290,6 @@ function getStudentList() {
       .map(row => ({
         seatNo: row[COL_USER_SEAT - 1],
         name: String(row[COL_USER_NAME - 1]),
-        loginId: String(row[COL_USER_ID - 1]),
         role: String(row[COL_USER_ROLE - 1])
       }))
       .sort((a, b) => Number(a.seatNo) - Number(b.seatNo));
@@ -331,9 +324,8 @@ function saveStudentList(students) {
         const rowNum = existingIndex + 2;
         sheet.getRange(rowNum, COL_USER_SEAT).setValue(seatNo);
         sheet.getRange(rowNum, COL_USER_NAME).setValue(name);
-        // ログインIDが未設定なら自動生成
-        if (!sheet.getRange(rowNum, COL_USER_ID).getValue()) {
-          sheet.getRange(rowNum, COL_USER_ID).setValue('student' + String(seatNo).padStart(2, '0'));
+        // 権限が未設定なら児童とする
+        if (!sheet.getRange(rowNum, COL_USER_ROLE).getValue()) {
           sheet.getRange(rowNum, COL_USER_ROLE).setValue('児童');
         }
       } else {
@@ -341,7 +333,6 @@ function saveStudentList(students) {
         sheet.appendRow([
           seatNo,
           name,
-          'student' + String(seatNo).padStart(2, '0'),
           '',
           '児童'
         ]);
@@ -357,7 +348,7 @@ function saveStudentList(students) {
 
 /**
  * 児童を個別登録・更新する
- * @param {Object} student - {seatNo, name, loginId}
+ * @param {Object} student - {seatNo, name}
  * @returns {Object} - {success, message}
  */
 function addOrUpdateStudent(student) {
@@ -366,7 +357,6 @@ function addOrUpdateStudent(student) {
     const users = getUserData();
     const seatNo = String(student.seatNo).trim();
     const name = String(student.name).trim();
-    const loginId = student.loginId ? String(student.loginId).trim() : 'student' + seatNo.padStart(2, '0');
 
     if (!seatNo || !name) {
       return { success: false, message: '出席番号と氏名は必須です。' };
@@ -378,11 +368,10 @@ function addOrUpdateStudent(student) {
       const rowNum = existingIndex + 2;
       sheet.getRange(rowNum, COL_USER_SEAT).setValue(seatNo);
       sheet.getRange(rowNum, COL_USER_NAME).setValue(name);
-      sheet.getRange(rowNum, COL_USER_ID).setValue(loginId);
       sheet.getRange(rowNum, COL_USER_ROLE).setValue('児童');
       return { success: true, message: '更新しました。' };
     } else {
-      sheet.appendRow([seatNo, name, loginId, '', '児童']);
+      sheet.appendRow([seatNo, name, '', '児童']);
       return { success: true, message: '登録しました。' };
     }
   } catch (e) {
@@ -439,7 +428,7 @@ function deleteAllStudents() {
 
 /**
  * 全児童のパスワード一覧を取得する
- * @returns {Object} - {success, passwords: [{seatNo, name, loginId, password}]}
+ * @returns {Object} - {success, passwords: [{seatNo, name, password}]}
  */
 function getAllPasswords() {
   try {
@@ -449,7 +438,6 @@ function getAllPasswords() {
       .map(row => ({
         seatNo: row[COL_USER_SEAT - 1],
         name: String(row[COL_USER_NAME - 1]),
-        loginId: String(row[COL_USER_ID - 1]),
         password: String(row[COL_USER_PASS - 1])
       }))
       .sort((a, b) => Number(a.seatNo) - Number(b.seatNo));
@@ -589,11 +577,10 @@ function generateSampleData() {
     for (let i = 1; i <= 10; i++) {
       const seatNo = String(i);
       const name = '児童' + seatNo.padStart(2, '0');
-      const loginId = 'student' + seatNo.padStart(2, '0');
       
       const idx = users.findIndex(u => String(u[COL_USER_SEAT - 1]) === seatNo);
       if (idx < 0) {
-        userSheet.appendRow([seatNo, name, loginId, '', '児童']);
+        userSheet.appendRow([seatNo, name, '', '児童']);
         userAdded++;
       }
     }
