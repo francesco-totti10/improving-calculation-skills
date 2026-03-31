@@ -92,10 +92,11 @@ function login(loginId, password) {
     for (let i = 0; i < users.length; i++) {
       const row = users[i];
       const storedId = String(row[COL_USER_ID - 1]).trim();
-      const storedPass = String(row[COL_USER_PASS - 1]).trim();
+      const storedPass = row[COL_USER_PASS - 1]; // 文字列変換せずに取得
+      
       if (storedId === String(loginId).trim()) {
-        // 初回登録（パスワード未設定）
-        if (storedPass === '' || storedPass === 'undefined') {
+        // 初回登録（パスワード未設定、または空文字、null、空白のみの場合）
+        if (storedPass === '' || storedPass === null || storedPass === undefined || String(storedPass).trim() === '') {
           return {
             success: false,
             needsPasswordSetup: true,

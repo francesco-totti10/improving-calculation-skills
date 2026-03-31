@@ -488,8 +488,8 @@ function doLogin() {
   const loginId = document.getElementById('login-id').value.trim();
   const password = document.getElementById('login-pass').value.trim();
   if (!loginId) { showAlert('login-alert', 'ログインIDを入力してください。', 'error'); return; }
-  if (!password) { showAlert('login-alert', 'パスワードを入力してください。', 'error'); return; }
-
+  // 初回ログイン時はパスワードが空なので、バリデーションを緩和します
+  
   document.getElementById('btn-login').textContent = '確認中...';
   document.getElementById('btn-login').disabled = true;
 
